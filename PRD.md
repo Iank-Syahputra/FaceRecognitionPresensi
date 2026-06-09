@@ -1,161 +1,95 @@
 # PRODUCT REQUIREMENTS DOCUMENT
-
 # (PRD)
 
-**Judul Proyek:** Implementasi Sistem Presensi Zero-Retraining Menggunakan Pipeline MTCNN
-dan FaceNet pada Lingkungan Akademik
+**Judul Proyek:** Implementasi Sistem Presensi Zero-Retraining Menggunakan Pipeline MTCNN dan FaceNet pada Lingkungan Akademik (SIAKAD)
 
 ## 1. Project Overview
 
-```
-● Deskripsi Proyek: Sebuah sistem presensi kelas otomatis berbasis pengenalan wajah
-( Face Recognition ) yang memecahkan masalah inefisiensi arsitektur klasifikasi tradisional.
-Sistem ini mengadopsi pendekatan Metric Learning , di mana model AI bertindak murni
-sebagai pengekstraksi fitur ( Feature Extractor ).
-● Tujuan Utama (Objective): Membangun sistem yang Zero-Retraining —mampu mengenali
-mahasiswa baru hanya dengan menyimpan Face Embeddings (vektor wajah) ke
-pangkalan data tanpa perlu melatih ulang ( retrain ) keseluruhan model Deep Learning.
-● Target Pengguna:
-○ Mahasiswa: Melakukan pemindaian wajah mandiri saat awal registrasi (Enrollment)
-dan melakukan presensi harian saat masuk kelas.
-○ Admin/Dosen: Memantau sistem, memvalidasi data registrasi, dan mengelola log
-kehadiran harian di dashboard.
-```
+*   **Deskripsi Proyek:** Sebuah sistem presensi kelas otomatis berbasis pengenalan wajah (*Face Recognition*) yang terintegrasi dengan logika Sistem Informasi Akademik (SIAKAD). Sistem ini mengadopsi pendekatan *Metric Learning*, di mana model AI bertindak murni sebagai pengekstraksi fitur (*Feature Extractor*).
+*   **Tujuan Utama (Objective):** Membangun sistem berskala besar yang *Zero-Retraining*—mampu mengenali mahasiswa baru hanya dengan menyimpan *Face Embeddings* (vektor wajah) ke pangkalan data tanpa perlu melatih ulang (*retrain*) keseluruhan model Deep Learning.
+*   **Target Pengguna:**
+    *   **Mahasiswa:** Melakukan pemindaian wajah mandiri secara interaktif saat awal registrasi (Enrollment) dengan validasi pose *real-time*.
+    *   **Dosen/Admin:** Mengelola Mata Kuliah, membuka/menutup Sesi Kelas harian, dan memonitor *log* kehadiran mahasiswa secara *real-time* maupun melihat rekap laporan kelas yang telah usai.
+
 ## 2. User Flow
 
-Sistem ini dibagi menjadi dua alur pengguna ( _User Flow_ ) utama yang berjalan secara
-independen:
+Sistem ini dibagi menjadi dua alur pengguna (*User Flow*) utama yang berjalan secara independen:
 
-### Flow A: Enrollment (Pendaftaran Wajah Dinamis)
+### Flow A: Smart Enrollment (Pendaftaran Wajah Dinamis)
+1.  Mahasiswa membuka halaman registrasi biometrik (`/enroll`) di *dashboard* web dan memberikan izin akses kamera.
+2.  Pengguna memasukkan data diri dasar (Nama, NIM).
+3.  Antarmuka web menampilkan *live feed* dengan *overlay* bingkai oval ala Face ID dan memberikan instruksi interaktif (Depan, Kanan, Kiri, Bawah).
+4.  Di latar belakang, UI mengirimkan *frame* setiap 500ms ke backend untuk **dianalisis putaran kepalanya (Head Pose Estimation)** menggunakan rasio *Facial Landmarks*.
+5.  Sistem HANYA akan mengambil foto jika pengguna benar-benar memutar kepala sesuai instruksi (bingkai oval berubah hijau).
+6.  Setelah 4 angle terpenuhi, MTCNN memotong wajah, dan FaceNet mengekstraknya menjadi 4 vektor terpisah (Multi-Vector Architecture).
+7.  Sistem menyimpan data Identitas dan ke-4 vektor asli ke dalam *database*.
 
-1. Mahasiswa (atau Admin) membuka halaman registrasi biometrik di _dashboard_ web dan
-    memberikan izin akses kamera.
-2. Pengguna memasukkan data diri dasar (Nama, NIM).
-3. Antarmuka web menampilkan _live feed_ dan memberikan instruksi interaktif:
-    ○ "Tatap lurus ke depan."
-    ○ "Tolehkan kepala sedikit ke kanan."
-    ○ "Tolehkan kepala sedikit ke kiri."
-    ○ "Tundukkan kepala sedikit."
-4. Di latar belakang, sistem menangkap _frame_ terbaik dari berbagai sudut tersebut secara
-    otomatis.
-5. _Frame_ dikirim ke _backend_. MTCNN mendeteksi wajah, lalu FaceNet mengekstraknya
-    menjadi beberapa vektor. Vektor-vektor ini dirata-ratakan menjadi satu **Vektor Agregat**
-    yang merepresentasikan wajah mahasiswa dari berbagai sisi.
-6. Sistem menyimpan Nama, NIM, dan Vektor Agregat ke dalam _database_.
-
-
-### Flow B: Inference (Presensi Real-Time di Kelas)
-
-1. Kamera presensi di ruang kelas aktif menampilkan _live video feed_.
-2. Mahasiswa berjalan melewati jangkauan kamera.
-3. _Backend_ menangkap _frame_ , menjalankan MTCNN untuk memotong wajah, dan
-    menggunakan FaceNet untuk mengekstrak vektor sementaranya secara _real-time_.
-4. Sistem melakukan pencarian kemiripan ( _Vector Similarity Search_ ) antara vektor sementara
-    ini dengan seluruh vektor di _database_.
-5. Jika skor _Cosine Similarity_ melebihi ambang batas ( _threshold_ ), UI akan memunculkan
-    nama mahasiswa dan sistem secara otomatis mencatat _timestamp_ kehadiran di _database_.
+### Flow B: Inference SIAKAD (Presensi Kelas)
+1.  **Buka Kelas:** Dosen masuk ke Dashboard (`/dashboard`), memilih Mata Kuliah, dan menekan "Buat Sesi Kelas Hari Ini". Sistem mencatat ID Sesi baru.
+2.  **Kios Aktif:** Layar berpindah ke mode Kiosk (`/scan`). Kamera presensi di ruang kelas aktif menampilkan *live video feed*.
+3.  **Deteksi:** Mahasiswa berjalan melewati jangkauan kamera. Frontend menggambar *Bounding Box* hijau dan nama jika wajah dikenali.
+4.  **Komparasi & Log:** *Backend* mengekstrak vektor, melakukan pencarian kemiripan (*Vector Similarity Search*) ke seluruh variasi pose di database. Jika lolos *threshold*, sistem mencatat kehadiran ke dalam `attendance_logs` yang terikat khusus pada ID Sesi kelas tersebut (dengan perlindungan anti-spam/cooldown).
+5.  **Tutup Kelas:** Dosen menekan "Tutup Kelas". Kamera mati. Dosen dapat melihat laporan detail siapa saja yang hadir pada sesi tersebut di halaman Laporan (`/session/[id]`).
 
 ## 3. Core Feature
 
-```
-● Multi-Angle Live Enrollment: Alur pendaftaran mandiri interaktif yang menginstruksikan
-pengguna untuk menggerakkan kepala, memastikan sistem menangkap variasi pose (Yaw
-dan Pitch) untuk tingkat ketahanan ( robustness ) yang tinggi.
-● Zero-Retraining Pipeline: Skalabilitas penuh. Menambah identitas mahasiswa baru dalam
-hitungan detik tanpa membebani server dengan proses pelatihan ( training ) ulang model AI.
-● Vector-based Similarity Search: Mesin pencari komparasi matriks wajah berkecepatan
-tinggi yang ditanam langsung di level database (Supabase/PostgreSQL).
-● Attendance Dashboard: Antarmuka web terpusat bagi dosen/admin untuk melihat metrik
-kehadiran, log harian, dan mengekspor rekapitulasi data presensi.
-```
-## 4. Architektur
+*   **Smart Multi-Angle Enrollment:** Alur pendaftaran mandiri dengan AI yang secara *real-time* memvalidasi kemiringan dan putaran leher pengguna menggunakan Rasio Koordinat Linear XY, memastikan data biometrik yang disimpan sangat berkualitas.
+*   **Multi-Vector Scale-Ready Pipeline:** Menyimpan seluruh variasi pose asli secara terpisah (bukan agregasi/rata-rata) untuk mencegah *Vector Dilution*, memungkinkan penggunaan batas keamanan (*Threshold*) yang sangat tinggi (0.75 - 0.85) meskipun jumlah mahasiswa mencapai ribuan.
+*   **Business Logic SIAKAD:** Implementasi relasional antara Mata Kuliah (`courses`) dan Sesi Harian (`course_sessions`) yang memungkinkan presensi terisolasi per mata kuliah dan per hari.
+*   **Vector-based Similarity Search:** Mesin pencari komparasi matriks wajah berkecepatan tinggi yang ditanam langsung di level database (Supabase/PostgreSQL).
+*   **Real-time Kiosk & Reporting:** Antarmuka web reaktif (*Svelte 5 Runes*) untuk memantau presensi kelas secara langsung (*live Bounding Box*) dan fitur pembuatan laporan absensi harian yang dapat dicetak.
 
-Arsitektur dirancang menggunakan pola _Client-Server_ dengan pemisahan komponen yang
-jelas:
+## 4. Arsitektur
 
-1. **Client Interface (Frontend):** Berjalan di peramban web ( _browser_ ). Menangani UI
-    pendaftaran interaktif, menangkap _stream_ kamera web kelas, dan mengirimkan _frame_
-    gambar ke _backend_ via HTTP/WebSocket.
-2. **ML API Gateway (Backend):** Mesin utama _server-side_. Menerima gambar, mengeksekusi
-    proses inferensi (MTCNN + FaceNet), dan mengalkulasi logika presensi berdasarkan
-    respons pangkalan data.
-3. **Vector Database:** Pangkalan data relasional yang diperluas ( _extended_ ) kemampuannya
-    untuk menyimpan dan mengalkulasi kedekatan jarak antar array numerik berdimensi tinggi
-    secara asali ( _native_ ).
+Arsitektur dirancang menggunakan pola *Client-Server* dengan pemisahan komponen yang jelas:
 
-## 5. Database Schema
+1.  **Client Interface (Frontend):** SvelteKit bertindak sebagai *Thin Client*. Menangani UI pendaftaran, *polling* kamera Kios, dan mem-parsing hasil deteksi (kotak wajah) ke atas video, tanpa melakukan komputasi AI apa pun di *browser*.
+2.  **ML API Gateway (Backend):** FastAPI (Python) sebagai otak. Menjalankan *Deep Learning* (MTCNN + FaceNet), kalkulasi rasio putaran leher, logika *cooldown* absensi, dan validasi sesi.
+3.  **Vector Database:** Supabase (PostgreSQL + pgvector). Menyimpan identitas relasional SIAKAD dan melakukan komparasi jarak Cosine secara *native*.
 
-Pangkalan data akan menggunakan ekstensi pgvector pada PostgreSQL (via Supabase) agar
-operasi komparasi vektor dapat berjalan secepat kueri SQL biasa.
+## 5. Database Schema (Supabase)
 
-### Tabel 1: students (Tabel Master Identitas)
+Struktur relasional untuk mendukung manajemen SIAKAD dan Multi-Vector.
 
+### Tabel 1: courses (Mata Kuliah)
+*   `id` UUID (Primary Key)
+*   `course_code` VARCHAR (ex: CS101)
+*   `course_name` VARCHAR (ex: Kecerdasan Buatan)
+*   `lecturer_name` VARCHAR
 
-```
-Kolom Tipe Data Keterangan
-id UUID Primary Key
-nim VARCHAR Nomor Induk Mahasiswa
-(Unique Constraint)
-name VARCHAR Nama Lengkap Mahasiswa
-face_embedding VECTOR(512) Array 512-dimensi mewakili
-Vektor Agregat dari
-FaceNet
-created_at TIMESTAMP Waktu data wajah
-diregistrasi
-```
-### Tabel 2: attendance_logs (Tabel Transaksi Presensi)
+### Tabel 2: course_sessions (Sesi Kelas Harian)
+*   `id` UUID (Primary Key)
+*   `course_id` UUID (Foreign Key ke courses.id)
+*   `session_date` DATE
+*   `status` VARCHAR ('active' atau 'closed')
 
-```
-Kolom Tipe Data Keterangan
-id UUID Primary Key
-student_id UUID
-Foreign Key students.id
-similarity_score FLOAT Tingkat keyakinan sistem
-saat scan (contoh: 0.87)
-timestamp TIMESTAMP Waktu detail kehadiran
-dicatat oleh sistem
-```
+### Tabel 3: students (Master Identitas Mahasiswa)
+*   `id` UUID (Primary Key)
+*   `nim` VARCHAR (Unique)
+*   `name` VARCHAR
+
+### Tabel 4: student_faces (Database Biometrik Multi-Pose)
+*   `id` UUID (Primary Key)
+*   `student_id` UUID (Foreign Key ke students.id)
+*   `embedding` VECTOR(512) (Satu baris menyimpan 1 dari 4 pose pendaftaran)
+*   *Index:* HNSW (vector_cosine_ops)
+
+### Tabel 5: attendance_logs (Transaksi Presensi)
+*   `id` UUID (Primary Key)
+*   `student_id` UUID (Foreign Key ke students.id)
+*   `session_id` UUID (Foreign Key ke course_sessions.id)
+*   `similarity_score` FLOAT
+*   `timestamp` TIMESTAMP
+*   *Constraint:* UNIQUE(student_id, session_id) -> Mencegah duplikasi absen di kelas yang sama.
+
 ## 6. Model dan Algoritma
 
-```
-● Pendeteksian (MTCNN - Multi-task Cascaded Convolutional Networks): Model ringan
-yang secara presisi mendeteksi area wajah dari gambar mentah dan melacak titik facial
-landmarks (seperti mata dan hidung). Titik ini krusial untuk proses Face Alignment
-(memutar gambar agar posisi wajah tegak/proporsional) sebelum diekstraksi.
-● Ekstraksi Fitur (FaceNet dengan Inception-ResNet v1): Model AI pre-trained yang murni
-berfungsi memetakan area wajah menjadi ruang Euclidean 512-dimensi. Pendekatan ini
-dikenal sebagai Deep Metric Learning.
-● Komparasi (Cosine Similarity): Metrik kalkulasi yang mengukur sudut kosinus antara dua
-vektor di ruang multi-dimensi. Cocok untuk perbandingan wajah karena fokus pada
-```
+*   **Pendeteksian & Head Pose Estimation (MTCNN):** Selain memotong area wajah, AI mengekstrak 5 *Facial Landmarks*. Rasio jarak horizontal (Sumbu X hidung terhadap mata) digunakan untuk mendeteksi putaran kepala (Yaw), sedangkan rasio vertikal (Sumbu Y) digunakan untuk deteksi *Pitch* (mendongak/menunduk).
+*   **Ekstraksi Fitur (FaceNet Inception-ResNet v1):** Model AI *pre-trained* pada dataset VGGFace2 yang memetakan area wajah menjadi ruang Euclidean 512-dimensi.
+*   **Komparasi (Cosine Similarity):** Metrik kalkulasi yang mengukur kedekatan dua vektor dengan fokus pada orientasi vektor, mengabaikan besaran intensitas cahaya. Eksekusi dilakukan asali oleh fungsi `match_face()` RPC di PostgreSQL.
 
-```
-orientasi vektor, bukan besaran intensitas warna pikselnya. Formula:
-```
 ## 7. Tech Stack
 
-Pilihan teknologi untuk memastikan latensi sistem tetap rendah saat pemrosesan gambar
-secara _real-time_ :
-**● Frontend (Thin Client & Camera Capture):**
-○ **Framework:** SvelteKit. Bertindak sebagai _thin client_ yang beroperasi tanpa
-_Virtual DOM_. Menjamin kompilasi ukuran _bundle_ JavaScript yang sangat kecil,
-meminimalisir _overhead_ memori _browser_ , dan memberikan reaktivitas DOM
-seketika ( _native-like_ ) yang krusial untuk mencegah _stuttering_ saat antarmuka
-memproses instruksi _live enrollment_ secara cepat.
-○ **Styling:** Tailwind CSS. Digunakan untuk merancang antarmuka _dashboard_ yang
-bersih dan responsif, yang mana utilitas kelasnya akan dikompilasi secara efisien
-oleh Svelte.
-○ **Camera API:** WebRTC atau MediaDevices API. Akses _hardware_ kamera dikelola
-langsung melalui sistem reaktivitas reaktif bawaan Svelte (tanpa siklus _hooks_
-yang rumit) untuk memastikan perekaman _stream_ yang stabil dan memitigasi
-risiko kebocoran memori ( _memory leak_ ).
-**● Backend (Machine Learning API):**
-○ **Framework:** FastAPI (Python). Dipilih karena dukungan komputasi asinkron
-( _async_ ) yang sangat baik untuk melayani inferensi model berat.
-○ **Library Eksekusi AI:** PyTorch dan modul facenet-pytorch.
-**● Database & Storage:**
-● **Sistem:** Supabase (mengelola PostgreSQL dan API BaaS).
-○ **Fitur Spesifik:** Modul ekstensi pgvector untuk optimasi penyimpanan dan
-komputasi metrik pada kolom face_embedding.
-
-
+*   **Frontend:** SvelteKit v2 (dengan Svelte 5 Runes Reactivity), Tailwind CSS v3, MediaDevices API (WebRTC).
+*   **Backend:** FastAPI (Python), Uvicorn, PyTorch, modul `facenet-pytorch`.
+*   **Database:** Supabase (PostgreSQL), Ekstensi `pgvector`.

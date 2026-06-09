@@ -1,35 +1,67 @@
--- 1. Mengaktifkan ekstensi pgvector (wajib untuk tipe data vektor)
+-- ==============================================================================
+-- SKEMA DATABASE: PRESENSI COMPUTER VISION (MULTI-VECTOR ARCHITECTURE)
+-- ==============================================================================
+
+-- 1. MENGAKTIFKAN EKSTENSI PANGKALAN DATA
 CREATE EXTENSION IF NOT EXISTS vector;
 
--- 2. Membuat tabel Master Identitas (students)
+-- 2. TABEL MATA KULIAH (COURSES)
+CREATE TABLE IF NOT EXISTS courses (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    course_code VARCHAR NOT NULL,
+    course_name VARCHAR NOT NULL,
+    lecturer_name VARCHAR NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Masukkan Data Contoh (Dummy Data)
+INSERT INTO courses (course_code, course_name, lecturer_name) VALUES 
+('CS101', 'Algoritma & Pemrograman', 'Budi Santoso, M.Kom'),
+('CS202', 'Kecerdasan Buatan', 'Dr. Dina Amelia');
+
+-- 3. TABEL SESI KELAS (COURSE SESSIONS)
+CREATE TABLE IF NOT EXISTS course_sessions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    course_id UUID REFERENCES courses(id) ON DELETE CASCADE,
+    session_date DATE DEFAULT CURRENT_DATE,
+    status VARCHAR DEFAULT 'active', -- 'active' atau 'closed'
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 4. TABEL IDENTITAS MAHASISWA (STUDENTS)
 CREATE TABLE IF NOT EXISTS students (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     nim VARCHAR UNIQUE NOT NULL,
     name VARCHAR NOT NULL,
-    -- Menyimpan vektor ekstraksi FaceNet berukuran 512 dimensi
-    face_embedding VECTOR(512),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 3. Membuat Index untuk mempercepat pencarian (Vector Similarity Search)
--- Menggunakan HNSW (Hierarchical Navigable Small World) index yang direkomendasikan pgvector untuk performa dan akurasi tinggi.
--- `vector_cosine_ops` digunakan karena kita akan mengukur jarak dengan Cosine Similarity.
-CREATE INDEX IF NOT EXISTS students_face_embedding_idx ON students USING hnsw (face_embedding vector_cosine_ops);
+-- 5. TABEL BIOMETRIK WAJAH MAHASISWA (STUDENT FACES - MULTI VECTOR)
+CREATE TABLE IF NOT EXISTS student_faces (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    student_id UUID REFERENCES students(id) ON DELETE CASCADE,
+    embedding VECTOR(512),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
 
--- 4. Membuat tabel Transaksi Presensi (attendance_logs)
+-- Membuat Index HNSW untuk pencarian vektor berkecepatan tinggi
+CREATE INDEX IF NOT EXISTS student_faces_embedding_idx ON student_faces USING hnsw (embedding vector_cosine_ops);
+
+-- 6. TABEL LOG KEHADIRAN (ATTENDANCE LOGS)
 CREATE TABLE IF NOT EXISTS attendance_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     student_id UUID REFERENCES students(id) ON DELETE CASCADE,
+    session_id UUID REFERENCES course_sessions(id) ON DELETE CASCADE,
     similarity_score FLOAT NOT NULL,
-    timestamp TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    UNIQUE(student_id, session_id) -- Mencegah 1 mahasiswa diabsen 2 kali di sesi yang sama
 );
 
--- 5. Membuat Fungsi RPC (Remote Procedure Call) untuk pencarian wajah
--- Fungsi ini akan dipanggil oleh backend FastAPI untuk membandingkan vektor dari kamera dengan database.
+-- 7. FUNGSI PENCARIAN KEMIRIPAN WAJAH (RPC)
 CREATE OR REPLACE FUNCTION match_face(
-    query_embedding VECTOR(512), -- Vektor hasil ekstraksi dari kamera saat presensi
-    match_threshold FLOAT,       -- Batas minimal kemiripan (misal: 0.85)
-    match_count INT              -- Jumlah hasil maksimal yang dikembalikan (biasanya 1 untuk presensi)
+    query_embedding VECTOR(512),
+    match_threshold FLOAT,
+    match_count INT
 )
 RETURNS TABLE (
     id UUID,
@@ -42,22 +74,26 @@ AS $$
 BEGIN
     RETURN QUERY
     SELECT
-        students.id,
-        students.nim,
-        students.name,
-        -- Kalkulasi Cosine Similarity:
-        -- Operator <=> mengembalikan "Cosine Distance" (Jarak Kosinus).
-        -- Cosine Similarity = 1 - Cosine Distance.
-        1 - (students.face_embedding <=> query_embedding) AS similarity
+        s.id,
+        s.nim,
+        s.name,
+        1 - (sf.embedding <=> query_embedding) AS similarity
     FROM
-        students
+        student_faces sf
+    JOIN
+        students s ON s.id = sf.student_id
     WHERE
-        -- Hanya kembalikan yang nilai similarity-nya di atas ambang batas (threshold)
-        1 - (students.face_embedding <=> query_embedding) > match_threshold
+        1 - (sf.embedding <=> query_embedding) > match_threshold
     ORDER BY
-        -- Urutkan berdasarkan jarak terdekat (paling mirip)
-        students.face_embedding <=> query_embedding
+        sf.embedding <=> query_embedding
     LIMIT
         match_count;
 END;
 $$;
+
+-- 8. MEMATIKAN ROW LEVEL SECURITY (UNTUK KEPERLUAN DEVELOPMENT)
+ALTER TABLE public.courses DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.course_sessions DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.students DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.student_faces DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.attendance_logs DISABLE ROW LEVEL SECURITY;
