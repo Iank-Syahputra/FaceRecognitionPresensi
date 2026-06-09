@@ -155,69 +155,88 @@
   }
 </script>
 
-<div class="max-w-4xl mx-auto py-10 px-4">
-  <div class="mb-8 flex items-center justify-between">
-    <h1 class="text-3xl font-bold text-gray-900">Enrollment Biometrik</h1>
-    <a href="/" class="text-indigo-600 hover:text-indigo-800 font-medium">&larr; Kembali</a>
-  </div>
+<div class="min-h-screen bg-campus-surface pb-10">
   
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-    <div class="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-      <h2 class="text-xl font-semibold mb-4">Data Mahasiswa</h2>
-      <div class="space-y-4">
-        <div>
-          <label for="nim" class="block text-sm font-medium text-gray-700">NIM</label>
-          <input type="text" id="nim" bind:value={nim} disabled={isEnrolling} class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+  <!-- Header -->
+  <header class="bg-campus-navy text-white px-4 py-4 sm:px-6 shadow-md flex items-center justify-between sticky top-0 z-10">
+    <div class="flex items-center gap-3">
+      <a href="/" class="p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+      </a>
+      <h1 class="text-xl font-bold tracking-tight">Registrasi Wajah Baru</h1>
+    </div>
+  </header>
+
+  <div class="max-w-4xl mx-auto mt-6 px-4">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-start">
+      
+      <!-- Kolom Kamera (Diubah urutannya di mobile agar muncul duluan) -->
+      <div class="bg-white p-4 sm:p-6 rounded-3xl shadow-xl border border-white flex flex-col items-center order-1 lg:order-2">
+        <div class="relative w-full max-w-sm aspect-[3/4] bg-campus-navy rounded-3xl overflow-hidden mb-5 shadow-inner">
+          <!-- svelte-ignore a11y_media_has_caption -->
+          <video bind:this={videoElement} autoplay playsinline class="absolute inset-0 w-full h-full object-cover transform scale-x-[-1]"></video>
+          
+          <!-- Masking Overlay ala Face ID -->
+          <div class="absolute inset-0 pointer-events-none flex flex-col items-center justify-center">
+            <div class="w-[75%] aspect-[3/4] rounded-[50%] border-4 transition-colors duration-300 {isEnrolling ? (isPoseValid ? 'border-emerald-400 bg-emerald-400/20' : 'border-yellow-400 bg-transparent') : 'border-white/50 bg-transparent'} shadow-[0_0_0_9999px_rgba(1,16,37,0.7)]"></div>
+          </div>
+
+          {#if isEnrolling && currentInstructionIndex < poses.length}
+            <!-- Indikator Progress -->
+            <div class="absolute top-6 left-0 right-0 flex justify-center gap-3">
+              {#each poses as _, i}
+                <div class="w-3 h-3 rounded-full shadow-sm {i < currentInstructionIndex ? 'bg-emerald-500 scale-100' : (i === currentInstructionIndex ? 'bg-yellow-400 animate-pulse scale-125' : 'bg-white/30 scale-75')} transition-transform"></div>
+              {/each}
+            </div>
+          {/if}
         </div>
-        <div>
-          <label for="name" class="block text-sm font-medium text-gray-700">Nama Lengkap</label>
-          <input type="text" id="name" bind:value={name} disabled={isEnrolling} class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
-        </div>
-        <div class="pt-4">
-          <button 
-            onclick={startEnrollment} 
-            disabled={isEnrolling || !nim || !name}
-            class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
-          >
-            {isEnrolling ? 'Proses Validasi Berjalan...' : 'Mulai Pendaftaran Wajah'}
-          </button>
+        
+        <canvas bind:this={canvasElement} class="hidden"></canvas>
+        
+        <div class="w-full text-center p-4 rounded-2xl border min-h-[5rem] flex items-center justify-center transition-colors {isEnrolling ? (isPoseValid ? 'bg-emerald-50 border-emerald-200' : 'bg-yellow-50 border-yellow-200') : 'bg-campus-surface/50 border-campus-secondary/20'}">
+          {#if isEnrolling}
+            <p class="text-base sm:text-lg font-bold transition-opacity duration-300 {isPoseValid ? 'text-emerald-700' : 'text-yellow-700'}">
+              {feedbackMessage}
+            </p>
+          {:else}
+            <p class="text-sm font-medium text-campus-secondary">
+              Posisikan wajah di dalam oval. Ikuti instruksi arah putaran kepala.
+            </p>
+          {/if}
         </div>
       </div>
-    </div>
-    
-    <div class="bg-white p-6 rounded-lg shadow-md border border-gray-200 flex flex-col items-center">
-      <div class="relative w-full aspect-[3/4] bg-gray-900 rounded-2xl overflow-hidden mb-4 shadow-inner max-w-sm">
-        <!-- svelte-ignore a11y_media_has_caption -->
-        <video bind:this={videoElement} autoplay playsinline class="absolute inset-0 w-full h-full object-cover transform scale-x-[-1]"></video>
-        
-        <!-- Masking Overlay ala Face ID -->
-        <div class="absolute inset-0 pointer-events-none flex flex-col items-center justify-center">
-          <div class="w-[80%] aspect-[3/4] rounded-[50%] border-4 transition-colors duration-300 {isEnrolling ? (isPoseValid ? 'border-green-400 bg-green-400/20' : 'border-yellow-400 bg-transparent') : 'border-gray-400 bg-transparent'} shadow-[0_0_0_9999px_rgba(0,0,0,0.6)]"></div>
+
+      <!-- Kolom Form Data -->
+      <div class="bg-white p-6 rounded-3xl shadow-xl border border-white order-2 lg:order-1">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="w-10 h-10 bg-campus-surface text-campus-primary rounded-xl flex items-center justify-center">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2"></path></svg>
+          </div>
+          <h2 class="text-xl font-bold text-campus-navy">Data Identitas</h2>
         </div>
 
-        {#if isEnrolling && currentInstructionIndex < poses.length}
-          <!-- Indikator Progress -->
-          <div class="absolute top-4 left-0 right-0 flex justify-center gap-2">
-            {#each poses as _, i}
-              <div class="w-3 h-3 rounded-full {i < currentInstructionIndex ? 'bg-green-500' : (i === currentInstructionIndex ? 'bg-yellow-400 animate-pulse' : 'bg-gray-500')}"></div>
-            {/each}
+        <div class="space-y-5">
+          <div>
+            <label for="nim" class="block text-sm font-bold text-campus-secondary uppercase tracking-wider mb-1.5">Nomor Induk Mahasiswa</label>
+            <input type="text" id="nim" bind:value={nim} disabled={isEnrolling} placeholder="Masukkan NIM..." class="block w-full border-2 border-campus-muted/30 rounded-xl bg-campus-surface/20 py-3 px-4 focus:outline-none focus:border-campus-primary focus:ring-2 focus:ring-campus-primary/20 transition-colors sm:text-base font-mono font-medium disabled:opacity-50" />
           </div>
-        {/if}
+          <div>
+            <label for="name" class="block text-sm font-bold text-campus-secondary uppercase tracking-wider mb-1.5">Nama Lengkap</label>
+            <input type="text" id="name" bind:value={name} disabled={isEnrolling} placeholder="Nama sesuai KTP..." class="block w-full border-2 border-campus-muted/30 rounded-xl bg-campus-surface/20 py-3 px-4 focus:outline-none focus:border-campus-primary focus:ring-2 focus:ring-campus-primary/20 transition-colors sm:text-base font-medium disabled:opacity-50" />
+          </div>
+          
+          <div class="pt-6 border-t border-campus-muted/20">
+            <button 
+              onclick={startEnrollment} 
+              disabled={isEnrolling || !nim || !name}
+              class="w-full flex justify-center py-3.5 px-4 border border-transparent rounded-xl shadow-lg shadow-campus-primary/30 text-base font-bold text-white bg-campus-primary hover:bg-campus-navy focus:outline-none focus:ring-4 focus:ring-campus-primary/50 transition-all duration-300 disabled:bg-campus-muted disabled:shadow-none disabled:cursor-not-allowed transform active:scale-[0.98]"
+            >
+              {isEnrolling ? 'Validasi Sedang Berjalan...' : 'Mulai Pendaftaran Wajah'}
+            </button>
+          </div>
+        </div>
       </div>
-      
-      <canvas bind:this={canvasElement} class="hidden"></canvas>
-      
-      <div class="w-full text-center p-4 rounded-md border min-h-[5rem] flex items-center justify-center transition-colors {isPoseValid ? 'bg-green-50 border-green-200' : 'bg-indigo-50 border-indigo-100'}">
-        {#if isEnrolling}
-          <p class="text-lg font-bold transition-opacity duration-300 {isPoseValid ? 'text-green-700' : 'text-indigo-800'}">
-            {feedbackMessage}
-          </p>
-        {:else}
-          <p class="text-sm text-gray-500">
-            Posisikan wajah Anda di dalam oval. Ikuti instruksi arah putaran kepala.
-          </p>
-        {/if}
-      </div>
+
     </div>
   </div>
 </div>

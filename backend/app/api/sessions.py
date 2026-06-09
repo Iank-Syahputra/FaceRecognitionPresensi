@@ -7,6 +7,11 @@ router = APIRouter()
 class CreateSessionRequest(BaseModel):
     course_id: str
 
+class CreateCourseRequest(BaseModel):
+    course_code: str
+    course_name: str
+    lecturer_name: str
+
 @router.get("/courses")
 async def get_courses():
     try:
@@ -25,6 +30,22 @@ async def get_courses():
                     del session["attendance_logs"]
                     
         return {"status": "success", "data": courses}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/courses")
+async def create_course(request: CreateCourseRequest):
+    try:
+        response = supabase_client.table('courses').insert({
+            "course_code": request.course_code,
+            "course_name": request.course_name,
+            "lecturer_name": request.lecturer_name
+        }).execute()
+        
+        if not response.data:
+            raise HTTPException(status_code=500, detail="Gagal menambahkan mata kuliah baru")
+            
+        return {"status": "success", "data": response.data[0]}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
