@@ -1,0 +1,74 @@
+# ==============================================================================
+# Node.js / SvelteKit (Frontend)
+# ==============================================================================
+node_modules/
+/frontend/node_modules/
+/frontend/build/
+/frontend/.svelte-kit/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-debug.log*
+.npm/
+
+# ==============================================================================
+# Python / FastAPI (Backend)
+# ==============================================================================
+# Virtual Environments
+backend/venv/
+backend/myvenv/
+backend/env/
+ENV/
+env.bak/
+venv.bak/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# PyTorch & Machine Learning specific
+*.pt
+*.pth
+*.onnx
+*.weights
+*.pb
+
+# ==============================================================================
+# Secrets / Environment Variables
+# ==============================================================================
+# JANGAN PERNAH COMMIT FILE .env KARENA BERISI KUNCI DATABASE & API
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+
+# ==============================================================================
+# OS & Editor Files
+# ==============================================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.suo
+
+# ==============================================================================
+# Logs & Databases
+# ==============================================================================
+*.log
+*.sqlite
+*.sqlite3

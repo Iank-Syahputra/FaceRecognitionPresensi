@@ -1,0 +1,16 @@
+# Web Framework & Server
+fastapi==0.104.1
+uvicorn==0.24.0.post1
+pydantic==2.5.2
+
+# Machine Learning & Computer Vision
+torch==2.1.1
+torchvision==0.16.1
+facenet-pytorch==2.5.3
+numpy==1.26.2
+Pillow==10.1.0
+
+# Database & Environment
+supabase==2.3.0
+python-dotenv==1.0.0
+python-multipart==0.0.6
