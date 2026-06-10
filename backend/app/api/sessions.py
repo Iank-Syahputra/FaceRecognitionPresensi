@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from app.services.db_service import supabase_client
@@ -7,6 +8,8 @@ router = APIRouter()
 
 class CreateSessionRequest(BaseModel):
     course_id: str
+    start_time: datetime | None = None
+    end_time: datetime | None = None
 
 class CreateCourseRequest(BaseModel):
     course_code: str
@@ -21,6 +24,7 @@ async def get_courses(current_user: dict = Depends(get_current_user)):
         
         # Merapikan hasil data agar mudah dibaca oleh frontend
         courses = response.data
+        now = datetime.utcnow()
         for course in courses:
             for session in course.get("course_sessions", []):
                 # Ekstrak nilai count dari array [{'count': X}]
@@ -29,6 +33,21 @@ async def get_courses(current_user: dict = Depends(get_current_user)):
                 # Hapus array log mentah untuk menghemat bandwidth
                 if "attendance_logs" in session:
                     del session["attendance_logs"]
+                # Tentukan apakah sesi sedang dibuka berdasarkan jendela waktu
+                try:
+                    start_time = session.get("start_time")
+                    end_time = session.get("end_time")
+                    if isinstance(start_time, str):
+                        start_time = datetime.fromisoformat(start_time.replace('Z', '+00:00'))
+                    if isinstance(end_time, str):
+                        end_time = datetime.fromisoformat(end_time.replace('Z', '+00:00'))
+                    session["is_open"] = bool(start_time and end_time and start_time <= now <= end_time and session.get("status") == 'active')
+                    session["is_future"] = bool(start_time and now < start_time)
+                    session["is_expired"] = bool(end_time and now > end_time)
+                except Exception:
+                    session["is_open"] = session.get("status") == 'active'
+                    session["is_future"] = False
+                    session["is_expired"] = False
                     
         return {"status": "success", "data": courses}
     except Exception as e:
@@ -80,9 +99,16 @@ async def create_session(request: CreateSessionRequest, current_user: dict = Dep
         if course.get('lecturer_id') and course.get('lecturer_id') != current_user.get('id'):
             raise HTTPException(status_code=403, detail='Anda tidak memiliki izin untuk membuat sesi untuk mata kuliah ini')
 
+        start_time = request.start_time or datetime.utcnow()
+        end_time = request.end_time or (start_time + timedelta(hours=1))
+        if end_time <= start_time:
+            raise HTTPException(status_code=400, detail='Waktu akhir harus lebih besar dari waktu mulai')
+
         response = supabase_client.table('course_sessions').insert({
             "course_id": request.course_id,
-            "status": "active"
+            "status": "active",
+            "start_time": start_time.isoformat(),
+            "end_time": end_time.isoformat()
         }).execute()
         
         if not response.data:

@@ -34,6 +34,12 @@ CREATE TABLE IF NOT EXISTS courses (
 ALTER TABLE IF EXISTS public.courses
 ADD COLUMN IF NOT EXISTS lecturer_id UUID REFERENCES users(id) ON DELETE SET NULL;
 
+ALTER TABLE IF EXISTS public.course_sessions
+ADD COLUMN IF NOT EXISTS start_time TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT timezone('utc'::text, now());
+
+ALTER TABLE IF EXISTS public.course_sessions
+ADD COLUMN IF NOT EXISTS end_time TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT timezone('utc'::text, now() + interval '1 hour');
+
 -- Masukkan Data Contoh (Dummy Data)
 INSERT INTO courses (course_code, course_name, lecturer_name) VALUES 
 ('CS101', 'Algoritma & Pemrograman', 'Budi Santoso, M.Kom'),
@@ -45,6 +51,8 @@ CREATE TABLE IF NOT EXISTS course_sessions (
     course_id UUID REFERENCES courses(id) ON DELETE CASCADE,
     session_date DATE DEFAULT CURRENT_DATE,
     status VARCHAR DEFAULT 'active', -- 'active' atau 'closed'
+    start_time TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT timezone('utc'::text, now()),
+    end_time TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT timezone('utc'::text, now() + interval '1 hour'),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 

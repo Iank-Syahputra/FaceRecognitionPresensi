@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from PIL import Image
 
-from app.api.auth import require_professor
+from app.api.auth import get_current_user
 from app.services.face_service import face_service
 from app.services.db_service import supabase_client
 from app.core.config import settings
@@ -18,14 +18,28 @@ class RecognizeRequest(BaseModel):
 from datetime import datetime, timedelta
 
 @router.post("/recognize")
-async def recognize_student(request: RecognizeRequest, current_user: dict = Depends(require_professor)):
+async def recognize_student(request: RecognizeRequest, current_user: dict = Depends(get_current_user)):
     if not request.image or not request.session_id:
         raise HTTPException(status_code=400, detail="Image atau Session ID kosong")
 
-    # 1. Cek Validitas Sesi
-    session_res = supabase_client.table('course_sessions').select("status").eq("id", request.session_id).execute()
-    if not session_res.data or session_res.data[0]['status'] != 'active':
+    # 1. Cek Validitas Sesi dan jendela waktu
+    session_res = supabase_client.table('course_sessions').select("status,start_time,end_time").eq("id", request.session_id).execute()
+    if not session_res.data:
         raise HTTPException(status_code=400, detail="Sesi kelas tidak valid atau sudah ditutup")
+
+    session_row = session_res.data[0]
+    if session_row['status'] != 'active':
+        raise HTTPException(status_code=400, detail="Sesi kelas tidak valid atau sudah ditutup")
+
+    start_time = session_row.get('start_time')
+    end_time = session_row.get('end_time')
+    now = datetime.utcnow()
+    if isinstance(start_time, str):
+        start_time = datetime.fromisoformat(start_time.replace('Z', '+00:00'))
+    if isinstance(end_time, str):
+        end_time = datetime.fromisoformat(end_time.replace('Z', '+00:00'))
+    if not (start_time and end_time and start_time <= now <= end_time):
+        raise HTTPException(status_code=400, detail="Sesi kelas saat ini tidak berada dalam rentang waktu yang valid")
 
     # 2. Decode Base64 Image
     try:

@@ -16,15 +16,21 @@
   
   let sessionId = $state('');
   let courseName = $state('Memuat...');
+  let role = $state('');
+
+  let faceBox = $state({ x1: 0, y1: 0, x2: 0, y2: 0, show: false });
+  let liveInfo = $state({ name: '', nim: '', similarity: 0, threshold: 0, match: false });
 
   onMount(async () => {
     const storedUser = getStoredUser();
     const token = getStoredToken();
-    if (!storedUser || !token || storedUser.role !== 'professor') {
+    if (!storedUser || !token) {
       clearAuth();
       window.location.href = '/login';
       return;
     }
+
+    role = storedUser.role;
 
     const urlParams = new URLSearchParams(window.location.search);
     sessionId = urlParams.get('session_id') || '';
@@ -257,13 +263,15 @@
       </div>
 
       <!-- Controls -->
-      <div class="bg-white p-4 rounded-3xl shadow-xl border border-white flex justify-between items-center gap-3">
-        <button onclick={closeSession} class="px-5 py-3 sm:px-6 bg-rose-50 text-rose-600 font-bold text-sm rounded-2xl hover:bg-rose-100 transition-colors flex-1 sm:flex-none text-center">
-          Tutup Sesi
-        </button>
+      <div class="bg-white p-4 rounded-3xl shadow-xl border border-white flex flex-col sm:flex-row justify-between items-center gap-3">
+        {#if role === 'professor'}
+          <button onclick={closeSession} class="px-5 py-3 sm:px-6 bg-rose-50 text-rose-600 font-bold text-sm rounded-2xl hover:bg-rose-100 transition-colors flex-1 sm:flex-none text-center">
+            Tutup Sesi
+          </button>
+        {/if}
         <button 
           onclick={toggleScan} 
-          class={`flex-1 py-3 px-4 rounded-2xl font-bold text-sm text-white shadow-lg transition-all duration-300 flex items-center justify-center gap-2 transform active:scale-95 ${isScanning ? 'bg-campus-navy hover:bg-campus-navy/90' : 'bg-campus-primary hover:bg-campus-primary/90'}`}
+          class={`w-full ${role === 'professor' ? 'sm:flex-1' : ''} py-3 px-4 rounded-2xl font-bold text-sm text-white shadow-lg transition-all duration-300 flex items-center justify-center gap-2 transform active:scale-95 ${isScanning ? 'bg-campus-navy hover:bg-campus-navy/90' : 'bg-campus-primary hover:bg-campus-primary/90'}`}
         >
           {#if isScanning}
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path></svg>

@@ -12,6 +12,8 @@
   let newCourseCode = $state('');
   let newCourseName = $state('');
   let isSubmitting = $state(false);
+  let newSessionStart = $state('');
+  let newSessionEnd = $state('');
 
   async function loadData() {
     isLoading = true;
@@ -87,6 +89,9 @@
   }
 
   async function startSession(courseId: string) {
+    if (!newSessionStart || !newSessionEnd) {
+      return alert('Silakan tentukan waktu mulai dan selesai sesi terlebih dahulu.');
+    }
     try {
       const response = await fetch('http://localhost:8000/api/sessions', {
         method: 'POST',
@@ -94,12 +99,14 @@
           ...authHeaders(),
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ course_id: courseId })
+        body: JSON.stringify({ course_id: courseId, start_time: new Date(newSessionStart).toISOString(), end_time: new Date(newSessionEnd).toISOString() })
       });
       if (response.ok) {
         const result = await response.json();
         const sessionId = result.data.id;
         const courseName = result.course_name;
+        newSessionStart = '';
+        newSessionEnd = '';
         window.location.href = `/scan?session_id=${sessionId}&course=${encodeURIComponent(courseName)}`;
       } else if (response.status === 401) {
         clearAuth();
@@ -261,9 +268,9 @@
                       
                       <!-- Tombol Lanjutkan & Hapus -->
                       <div class="flex flex-col items-end gap-2 shrink-0">
-                        {#if session.status === 'active' && role === 'professor'}
+                        {#if session.status === 'active' && session.is_open}
                           <button onclick={() => window.location.href = `/scan?session_id=${session.id}&course=${encodeURIComponent(course.course_name)}`} class="text-xs font-bold bg-campus-primary text-white px-3 py-1.5 rounded-lg hover:bg-campus-navy shadow-md transition-colors">
-                            Buka Layar
+                            {role === 'professor' ? 'Buka Layar' : 'Absen Sekarang'}
                           </button>
                         {:else}
                           <button onclick={() => window.location.href = `/session/${session.id}`} class="text-xs font-bold bg-campus-surface text-campus-primary px-3 py-1.5 rounded-lg hover:bg-campus-secondary hover:text-white transition-colors flex items-center gap-1">
@@ -284,8 +291,17 @@
             </div>
 
             {#if role === 'professor'}
-              <!-- Tombol Buka Sesi Baru -->
-              <div class="p-5 bg-white border-t border-campus-muted/10 shrink-0">
+              <div class="p-5 bg-white border-t border-campus-muted/10 shrink-0 space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label class="block text-xs font-bold uppercase tracking-widest text-campus-secondary">
+                    Mulai
+                    <input type="datetime-local" bind:value={newSessionStart} class="mt-2 w-full rounded-2xl border border-campus-muted/30 bg-campus-surface/80 px-3 py-2 focus:outline-none focus:border-campus-primary" />
+                  </label>
+                  <label class="block text-xs font-bold uppercase tracking-widest text-campus-secondary">
+                    Selesai
+                    <input type="datetime-local" bind:value={newSessionEnd} class="mt-2 w-full rounded-2xl border border-campus-muted/30 bg-campus-surface/80 px-3 py-2 focus:outline-none focus:border-campus-primary" />
+                  </label>
+                </div>
                 <button 
                   onclick={() => startSession(course.id)}
                   class="w-full py-3.5 bg-campus-surface text-campus-primary font-bold rounded-2xl hover:bg-campus-primary hover:text-white border-2 border-campus-surface hover:border-campus-primary shadow-sm hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2 transform active:scale-95"

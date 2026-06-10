@@ -35,5 +35,5 @@ export function clearAuth() {
 
 export function authHeaders() {
   const token = getStoredToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  return token ? { Authorization: `Bearer ${token}` } : {} as Record<string, string>;
 }
