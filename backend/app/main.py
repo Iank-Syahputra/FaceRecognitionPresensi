@@ -23,6 +23,6 @@ def read_root():
     return {"message": "Welcome to Face Recognition API. The server is running."}
 
 # Menyambungkan (Include) endpoints ke aplikasi utama
-app.include_router(enroll.router, prefix="/api")
-app.include_router(recognize.router, prefix="/api")
-app.include_router(sessions.router, prefix="/api")
+app.include_router(enroll.router, prefix="/api", tags=["Enrollment"])
+app.include_router(recognize.router, prefix="/api", tags=["Recognition"])
+app.include_router(sessions.router, prefix="/api", tags=["Sessions"])
