@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
+  import { getStoredToken, getStoredUser, authHeaders, clearAuth } from '$lib/auth';
 
   let sessionId = $page.params.id;
   let sessionData: any = $state(null);
@@ -8,12 +9,25 @@
   let isLoading = $state(true);
 
   onMount(async () => {
+    const token = getStoredToken();
+    const storedUser = getStoredUser();
+    if (!token || !storedUser) {
+      clearAuth();
+      window.location.href = '/login';
+      return;
+    }
+
     try {
-      const response = await fetch(`http://localhost:8000/api/sessions/${sessionId}/logs`);
+      const response = await fetch(`http://localhost:8000/api/sessions/${sessionId}/logs`, {
+        headers: authHeaders()
+      });
       if (response.ok) {
         const result = await response.json();
         sessionData = result.session;
         logs = result.logs;
+      } else if (response.status === 401) {
+        clearAuth();
+        window.location.href = '/login';
       } else {
         alert("Gagal memuat detail sesi atau sesi tidak ditemukan.");
       }

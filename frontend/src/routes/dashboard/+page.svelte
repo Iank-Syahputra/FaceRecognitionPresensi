@@ -1,23 +1,33 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { getStoredToken, getStoredUser, authHeaders, clearAuth, type AuthUser } from '$lib/auth';
 
   let courses: any[] = $state([]);
   let isLoading = $state(true);
+  let user: AuthUser | null = $state(null);
+  let role = $state('');
 
   // State untuk Modal Tambah Mata Kuliah
   let showAddCourseModal = $state(false);
   let newCourseCode = $state('');
   let newCourseName = $state('');
-  let newLecturerName = $state('');
   let isSubmitting = $state(false);
 
   async function loadData() {
     isLoading = true;
     try {
-      const response = await fetch('http://localhost:8000/api/courses');
+      const response = await fetch('http://localhost:8000/api/courses', {
+        headers: {
+          ...authHeaders(),
+          'Content-Type': 'application/json'
+        }
+      });
       if (response.ok) {
         const result = await response.json();
         courses = result.data;
+      } else if (response.status === 401) {
+        clearAuth();
+        window.location.href = '/login';
       }
     } catch (err) {
       console.error(err);
@@ -28,11 +38,18 @@
   }
 
   onMount(() => {
+    const storedUser = getStoredUser();
+    if (!storedUser) {
+      window.location.href = '/login';
+      return;
+    }
+    user = storedUser;
+    role = storedUser.role;
     loadData();
   });
 
   async function addCourse() {
-    if (!newCourseCode || !newCourseName || !newLecturerName) {
+    if (!newCourseCode || !newCourseName) {
       return alert("Mohon lengkapi semua data kelas.");
     }
     
@@ -40,11 +57,13 @@
     try {
       const response = await fetch('http://localhost:8000/api/courses', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          ...authHeaders(),
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({ 
           course_code: newCourseCode,
-          course_name: newCourseName,
-          lecturer_name: newLecturerName
+          course_name: newCourseName
         })
       });
       
@@ -52,10 +71,13 @@
         showAddCourseModal = false;
         newCourseCode = '';
         newCourseName = '';
-        newLecturerName = '';
         await loadData(); // Refresh data
+      } else if (response.status === 401) {
+        clearAuth();
+        window.location.href = '/login';
       } else {
-        alert("Gagal menambahkan mata kuliah.");
+        const result = await response.json();
+        alert(result.detail || "Gagal menambahkan mata kuliah.");
       }
     } catch (err) {
       alert("Terjadi kesalahan jaringan saat menambah kelas.");
@@ -68,7 +90,10 @@
     try {
       const response = await fetch('http://localhost:8000/api/sessions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          ...authHeaders(),
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({ course_id: courseId })
       });
       if (response.ok) {
@@ -76,8 +101,12 @@
         const sessionId = result.data.id;
         const courseName = result.course_name;
         window.location.href = `/scan?session_id=${sessionId}&course=${encodeURIComponent(courseName)}`;
+      } else if (response.status === 401) {
+        clearAuth();
+        window.location.href = '/login';
       } else {
-        alert("Gagal membuat sesi kelas baru.");
+        const result = await response.json();
+        alert(result.detail || "Gagal membuat sesi kelas baru.");
       }
     } catch (err) {
       alert("Terjadi kesalahan jaringan.");
@@ -88,18 +117,27 @@
     if (confirm("Hapus riwayat presensi ini secara permanen? Seluruh data kehadiran pada tanggal ini akan hilang.")) {
       try {
         const response = await fetch(`http://localhost:8000/api/sessions/${sessionId}`, {
-          method: 'DELETE'
+          method: 'DELETE',
+          headers: authHeaders()
         });
         if (response.ok) {
-          // Muat ulang data setelah dihapus
           await loadData();
+        } else if (response.status === 401) {
+          clearAuth();
+          window.location.href = '/login';
         } else {
-          alert("Gagal menghapus riwayat.");
+          const result = await response.json();
+          alert(result.detail || "Gagal menghapus riwayat.");
         }
       } catch (err) {
         alert("Terjadi kesalahan jaringan.");
       }
     }
+  }
+
+  function logout() {
+    clearAuth();
+    window.location.href = '/login';
   }
 
   function formatDateTime(isoString: string) {
@@ -116,16 +154,35 @@
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
       </a>
       <div>
-        <h1 class="text-xl font-bold tracking-tight">Dashboard Dosen</h1>
-        <p class="text-xs text-campus-surface/70 hidden sm:block">Kelola sesi kelas & pantau kehadiran</p>
+        <h1 class="text-xl font-bold tracking-tight">{role === 'professor' ? 'Dashboard Dosen' : 'Dashboard Mahasiswa'}</h1>
+        <p class="text-xs text-campus-surface/70 hidden sm:block">{role === 'professor' ? 'Kelola sesi kelas & pantau kehadiran' : 'Lihat info kelas dan status sesi presensi'}</p>
       </div>
     </div>
     
-    <button onclick={() => showAddCourseModal = true} class="flex items-center gap-2 bg-campus-primary hover:bg-campus-surface hover:text-campus-navy border border-campus-surface/20 text-white px-4 py-2 rounded-xl transition-all text-sm font-bold shadow-sm group">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-      <span class="hidden sm:block">Tambah Kelas</span>
-    </button>
+    <div class="flex items-center gap-3">
+      {#if role === 'professor'}
+        <button onclick={() => showAddCourseModal = true} class="flex items-center gap-2 bg-campus-primary hover:bg-campus-surface hover:text-campus-navy border border-campus-surface/20 text-white px-4 py-2 rounded-xl transition-all text-sm font-bold shadow-sm group">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+          <span class="hidden sm:block">Tambah Kelas</span>
+        </button>
+      {/if}
+      <button onclick={logout} class="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl transition-all text-sm font-bold border border-white/20">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h6a2 2 0 012 2v1" /></svg>
+        Keluar
+      </button>
+    </div>
   </header>
+
+  {#if role !== 'professor'}
+    <div class="max-w-7xl mx-auto mt-4 px-4">
+      <div class="rounded-3xl border border-campus-muted/20 bg-white/90 p-4 sm:p-5 shadow-sm text-campus-navy">
+        <p class="font-bold">Perhatian:</p>
+        <p class="mt-2 text-sm text-campus-secondary">
+          Anda masuk sebagai Mahasiswa. Anda dapat melihat daftar mata kuliah dan detail sesi, tetapi hanya Dosen yang dapat membuat kelas dan membuka sesi presensi.
+        </p>
+      </div>
+    </div>
+  {/if}
 
   <div class="max-w-7xl mx-auto mt-6 px-4">
 
@@ -204,7 +261,7 @@
                       
                       <!-- Tombol Lanjutkan & Hapus -->
                       <div class="flex flex-col items-end gap-2 shrink-0">
-                        {#if session.status === 'active'}
+                        {#if session.status === 'active' && role === 'professor'}
                           <button onclick={() => window.location.href = `/scan?session_id=${session.id}&course=${encodeURIComponent(course.course_name)}`} class="text-xs font-bold bg-campus-primary text-white px-3 py-1.5 rounded-lg hover:bg-campus-navy shadow-md transition-colors">
                             Buka Layar
                           </button>
@@ -214,9 +271,11 @@
                             Detail
                           </button>
                         {/if}
-                        <button onclick={() => deleteSession(session.id)} class="text-campus-muted hover:text-rose-500 transition-colors p-1 opacity-0 lg:opacity-0 lg:group-hover:opacity-100 touch-manipulation:opacity-100" title="Hapus Riwayat">
-                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                        </button>
+                        {#if role === 'professor'}
+                          <button onclick={() => deleteSession(session.id)} class="text-campus-muted hover:text-rose-500 transition-colors p-1 opacity-0 lg:opacity-0 lg:group-hover:opacity-100 touch-manipulation:opacity-100" title="Hapus Riwayat">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                          </button>
+                        {/if}
                       </div>
                     </div>
                   {/each}
@@ -224,16 +283,18 @@
               {/if}
             </div>
 
-            <!-- Tombol Buka Sesi Baru -->
-            <div class="p-5 bg-white border-t border-campus-muted/10 shrink-0">
-              <button 
-                onclick={() => startSession(course.id)}
-                class="w-full py-3.5 bg-campus-surface text-campus-primary font-bold rounded-2xl hover:bg-campus-primary hover:text-white border-2 border-campus-surface hover:border-campus-primary shadow-sm hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2 transform active:scale-95"
-              >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-                Buat Sesi Kelas Hari Ini
-              </button>
-            </div>
+            {#if role === 'professor'}
+              <!-- Tombol Buka Sesi Baru -->
+              <div class="p-5 bg-white border-t border-campus-muted/10 shrink-0">
+                <button 
+                  onclick={() => startSession(course.id)}
+                  class="w-full py-3.5 bg-campus-surface text-campus-primary font-bold rounded-2xl hover:bg-campus-primary hover:text-white border-2 border-campus-surface hover:border-campus-primary shadow-sm hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2 transform active:scale-95"
+                >
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                  Buat Sesi Kelas Hari Ini
+                </button>
+              </div>
+            {/if}
             
           </div>
         {/each}
@@ -260,14 +321,9 @@
             <label class="block text-xs font-bold text-campus-secondary uppercase tracking-widest mb-1.5">Nama Mata Kuliah</label>
             <input type="text" bind:value={newCourseName} placeholder="Contoh: Algoritma Lanjut" class="block w-full border-2 border-campus-muted/30 rounded-xl bg-campus-surface/20 py-3 px-4 focus:outline-none focus:border-campus-primary font-medium text-campus-navy" />
           </div>
-          <div>
-            <label class="block text-xs font-bold text-campus-secondary uppercase tracking-widest mb-1.5">Dosen Pengampu</label>
-            <input type="text" bind:value={newLecturerName} placeholder="Contoh: Budi Santoso, M.Kom" class="block w-full border-2 border-campus-muted/30 rounded-xl bg-campus-surface/20 py-3 px-4 focus:outline-none focus:border-campus-primary font-medium text-campus-navy" />
-          </div>
-          
           <button 
             onclick={addCourse}
-            disabled={isSubmitting || !newCourseCode || !newCourseName || !newLecturerName}
+            disabled={isSubmitting || !newCourseCode || !newCourseName}
             class="w-full mt-2 py-3.5 bg-campus-primary text-white font-bold rounded-xl hover:bg-campus-navy disabled:bg-campus-muted transition-all shadow-md active:scale-[0.98]"
           >
             {isSubmitting ? 'Menyimpan...' : 'Simpan Kelas'}

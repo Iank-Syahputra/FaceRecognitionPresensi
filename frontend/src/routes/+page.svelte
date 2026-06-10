@@ -63,6 +63,13 @@
       </div>
     </div>
   </div>
+
+  <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-lg text-center px-4">
+    <a href="/login" class="inline-flex items-center justify-center gap-2 rounded-full border border-campus-primary bg-campus-primary/10 px-6 py-3 text-sm font-bold text-campus-primary hover:bg-campus-primary/20 transition">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14m-7-7l7 7-7 7"></path></svg>
+      Login / Daftar Akun
+    </a>
+  </div>
 </div>
 
 <style>

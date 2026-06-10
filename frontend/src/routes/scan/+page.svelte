@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { getStoredToken, getStoredUser, authHeaders, clearAuth } from '$lib/auth';
 
   let videoElement: HTMLVideoElement | undefined = $state();
   let canvasElement: HTMLCanvasElement | undefined = $state();
@@ -15,11 +16,16 @@
   
   let sessionId = $state('');
   let courseName = $state('Memuat...');
-  
-  let faceBox = $state({ x1: 0, y1: 0, x2: 0, y2: 0, show: false });
-  let liveInfo = $state({ name: '', nim: '', similarity: 0, threshold: 0.75, match: false });
 
   onMount(async () => {
+    const storedUser = getStoredUser();
+    const token = getStoredToken();
+    if (!storedUser || !token || storedUser.role !== 'professor') {
+      clearAuth();
+      window.location.href = '/login';
+      return;
+    }
+
     const urlParams = new URLSearchParams(window.location.search);
     sessionId = urlParams.get('session_id') || '';
     courseName = urlParams.get('course') || 'Sesi Tanpa Nama';
@@ -72,7 +78,10 @@
       try {
         const response = await fetch('http://localhost:8000/api/recognize', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            ...authHeaders(),
+            'Content-Type': 'application/json'
+          },
           body: JSON.stringify({ image: frame, session_id: sessionId })
         });
         
@@ -142,7 +151,14 @@
   async function closeSession() {
     if (confirm("Tutup sesi kelas ini? Mahasiswa yang telat tidak bisa absen lagi.")) {
       try {
-        await fetch(`http://localhost:8000/api/sessions/${sessionId}/close`, { method: 'POST' });
+        const response = await fetch(`http://localhost:8000/api/sessions/${sessionId}/close`, {
+          method: 'POST',
+          headers: authHeaders()
+        });
+        if (!response.ok) {
+          alert('Gagal menutup sesi.');
+          return;
+        }
         stopScanning();
         if (stream) stream.getTracks().forEach(t => t.stop());
         window.location.href = '/dashboard';

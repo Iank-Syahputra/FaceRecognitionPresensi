@@ -1,9 +1,10 @@
 import base64
 from io import BytesIO
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from PIL import Image
 
+from app.api.auth import require_professor
 from app.services.face_service import face_service
 from app.services.db_service import supabase_client
 from app.core.config import settings
@@ -17,7 +18,7 @@ class RecognizeRequest(BaseModel):
 from datetime import datetime, timedelta
 
 @router.post("/recognize")
-async def recognize_student(request: RecognizeRequest):
+async def recognize_student(request: RecognizeRequest, current_user: dict = Depends(require_professor)):
     if not request.image or not request.session_id:
         raise HTTPException(status_code=400, detail="Image atau Session ID kosong")
 

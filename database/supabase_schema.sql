@@ -5,21 +5,41 @@
 -- 1. MENGAKTIFKAN EKSTENSI PANGKALAN DATA
 CREATE EXTENSION IF NOT EXISTS vector;
 
--- 2. TABEL MATA KULIAH (COURSES)
+-- 2. TABEL PENGGUNA / ROLES
+CREATE TABLE IF NOT EXISTS users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR UNIQUE NOT NULL,
+    name VARCHAR NOT NULL,
+    password_hash TEXT NOT NULL,
+    role VARCHAR NOT NULL DEFAULT 'student',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Data contoh pengguna (password contoh: admin123 / student123)
+INSERT INTO users (email, name, password_hash, role) VALUES
+('admin@kampus.ac.id', 'Admin Dosen', '32ffbef62097cdb80579659c20f2cde7$raG2+2fTWrb2KYgkUyilicLI7Cz7Jx5lal5VMBbjNho=', 'professor'),
+('student@kampus.ac.id', 'Mahasiswa Demo', '37b1e221ca4968816501faf30d260494$xMkjyhXW02gcC/2lILX1/NwCcdhmvAerFnhwaE0Fu3Y=', 'student');
+
+-- 3. TABEL MATA KULIAH (COURSES)
 CREATE TABLE IF NOT EXISTS courses (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     course_code VARCHAR NOT NULL,
     course_name VARCHAR NOT NULL,
     lecturer_name VARCHAR NOT NULL,
+    lecturer_id UUID REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Jika skema sudah pernah dibuat, pastikan kolom lecturer_id juga ada
+ALTER TABLE IF EXISTS public.courses
+ADD COLUMN IF NOT EXISTS lecturer_id UUID REFERENCES users(id) ON DELETE SET NULL;
 
 -- Masukkan Data Contoh (Dummy Data)
 INSERT INTO courses (course_code, course_name, lecturer_name) VALUES 
 ('CS101', 'Algoritma & Pemrograman', 'Budi Santoso, M.Kom'),
 ('CS202', 'Kecerdasan Buatan', 'Dr. Dina Amelia');
 
--- 3. TABEL SESI KELAS (COURSE SESSIONS)
+-- 4. TABEL SESI KELAS (COURSE SESSIONS)
 CREATE TABLE IF NOT EXISTS course_sessions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     course_id UUID REFERENCES courses(id) ON DELETE CASCADE,

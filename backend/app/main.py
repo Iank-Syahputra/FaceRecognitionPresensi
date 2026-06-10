@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import enroll, recognize, sessions
+from app.api import auth, enroll, recognize, sessions
 
 app = FastAPI(
     title="Face Recognition Attendance API",
@@ -23,6 +23,7 @@ def read_root():
     return {"message": "Welcome to Face Recognition API. The server is running."}
 
 # Menyambungkan (Include) endpoints ke aplikasi utama
+app.include_router(auth.router, prefix="/api")
 app.include_router(enroll.router, prefix="/api")
 app.include_router(recognize.router, prefix="/api")
 app.include_router(sessions.router, prefix="/api")
