@@ -7,8 +7,8 @@
   let stream: MediaStream | null = $state(null);
   
   let isScanning = $state(false);
-  let scanInterval: ReturnType<typeof setInterval>;
-  let clockInterval: ReturnType<typeof setInterval>;
+  let scanInterval: ReturnType<typeof setInterval> | null = null;
+  let clockInterval: ReturnType<typeof setInterval> | null = null;
   
   let currentTime = $state(new Date());
   let recentLogs: { id: string, name: string, nim: string, time: string, similarity: number }[] = $state([]);
@@ -47,7 +47,7 @@
 
   onDestroy(() => {
     stopScanning();
-    clearInterval(clockInterval);
+    if (clockInterval) clearInterval(clockInterval);
     if (stream) stream.getTracks().forEach(t => t.stop());
   });
 
@@ -71,7 +71,7 @@
       if (!frame) return;
 
       try {
-        const response = await fetch(`${API_BASE_URL}/api/recognize', {
+        const response = await fetch(`${API_BASE_URL}/api/recognize`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ image: frame, session_id: sessionId })
@@ -116,7 +116,7 @@
             recentLogs = [newLog, ...recentLogs];
           }
         } else {
-           faceBox.show = false;
+          faceBox.show = false;
         }
       } catch (err) {
         console.error("Scan error:", err);
@@ -127,7 +127,7 @@
 
   function stopScanning() {
     isScanning = false;
-    clearInterval(scanInterval);
+    if (scanInterval) clearInterval(scanInterval);
     faceBox.show = false;
     currentScannedName = null;
   }
