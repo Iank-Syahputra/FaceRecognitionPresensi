@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
+  import { API_BASE_URL } from '$lib/api';
 
   let sessionId = $page.params.id;
   let sessionData: any = $state(null);
@@ -9,7 +10,7 @@
 
   onMount(async () => {
     try {
-      const response = await fetch(`http://localhost:8000/api/sessions/${sessionId}/logs`);
+      const response = await fetch(`${API_BASE_URL}/api/sessions/${sessionId}/logs`);
       if (response.ok) {
         const result = await response.json();
         sessionData = result.session;

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { API_BASE_URL } from '$lib/api';
 
   let videoElement: HTMLVideoElement | undefined = $state();
   let canvasElement: HTMLCanvasElement | undefined = $state();
@@ -70,7 +71,7 @@
       if (!frame) return;
 
       try {
-        const response = await fetch('http://localhost:8000/api/recognize', {
+        const response = await fetch(`${API_BASE_URL}/api/recognize', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ image: frame, session_id: sessionId })
@@ -142,7 +143,7 @@
   async function closeSession() {
     if (confirm("Tutup sesi kelas ini? Mahasiswa yang telat tidak bisa absen lagi.")) {
       try {
-        await fetch(`http://localhost:8000/api/sessions/${sessionId}/close`, { method: 'POST' });
+        await fetch(`${API_BASE_URL}/api/sessions/${sessionId}/close`, { method: 'POST' });
         stopScanning();
         if (stream) stream.getTracks().forEach(t => t.stop());
         window.location.href = '/dashboard';
