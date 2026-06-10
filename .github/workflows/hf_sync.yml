@@ -31,4 +31,4 @@ jobs:
           
           # Push paksa ke Hugging Face
           # CATATAN: Pastikan Anda sudah mengganti 'username/space-name' dengan data asli Anda di repository GitHub
-          git push --force https://ihram:$HF_TOKEN@huggingface.co/spaces/Ianksyahputra/modelfacenet main
+          git push --force https://ihram:$HF_TOKEN@huggingface.co/spaces/Ianksyahputra/modelfacenetMTCNN main
