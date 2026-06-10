@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { API_BASE_URL } from '$lib/api';
 
   // Svelte 5: Variabel yang mengubah UI harus dibungkus dengan $state()
   let videoElement: HTMLVideoElement | undefined = $state();
@@ -83,7 +84,7 @@
 
     if (frame) {
       try {
-        const response = await fetch('http://localhost:8000/api/validate', {
+        const response = await fetch(`${API_BASE_URL}/api/validate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ image: frame, expected_pose: expectedPose })
@@ -128,7 +129,7 @@
   async function finishEnrollment() {
     feedbackMessage = "Memproses dan menyimpan data biometrik...";
     try {
-      const response = await fetch('http://localhost:8000/api/enroll', {
+      const response = await fetch(`${API_BASE_URL}/api/enroll', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nim, name, frames: capturedFrames })

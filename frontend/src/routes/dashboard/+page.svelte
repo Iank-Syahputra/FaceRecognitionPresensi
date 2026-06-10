@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { API_BASE_URL } from '$lib/api';
 
   let courses: any[] = $state([]);
   let isLoading = $state(true);
@@ -22,7 +23,7 @@
   async function loadData() {
     isLoading = true;
     try {
-      const response = await fetch('http://localhost:8000/api/courses');
+      const response = await fetch(`${API_BASE_URL}/api/courses');
       if (response.ok) {
         const result = await response.json();
         courses = result.data;
@@ -46,7 +47,7 @@
 
     isSubmitting = true;
     try {
-      const response = await fetch('http://localhost:8000/api/courses', {
+      const response = await fetch(`${API_BASE_URL}/api/courses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -98,7 +99,7 @@
 
     sessionSubmitting = true;
     try {
-      const response = await fetch('http://localhost:8000/api/sessions', {
+      const response = await fetch(`${API_BASE_URL}/api/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -127,7 +128,7 @@
   async function deleteSession(sessionId: string) {
     if (confirm("Hapus riwayat presensi ini secara permanen? Seluruh data kehadiran pada tanggal ini akan hilang.")) {
       try {
-        const response = await fetch(`http://localhost:8000/api/sessions/${sessionId}`, {
+        const response = await fetch(`${API_BASE_URL}/api/sessions/${sessionId}`, {
           method: 'DELETE'
         });
         if (response.ok) {
