@@ -69,8 +69,8 @@ async def create_session(request: CreateSessionRequest):
 
         response = supabase_client.table('course_sessions').insert({
             "course_id": request.course_id,
-            "start_at": request.start_at,
-            "end_at": request.end_at,
+            "start_at": request.start_at.isoformat(),
+            "end_at": request.end_at.isoformat(),
             "status": "active"
         }).execute()
 
