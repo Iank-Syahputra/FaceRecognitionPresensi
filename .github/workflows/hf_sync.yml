@@ -1,8 +1,7 @@
-name: Sync to Hugging Face
+name: Sync Backend to Hugging Face
 on:
   push:
     branches: [main]
-  # Izinkan pemicuan manual dari tab Actions
   workflow_dispatch:
 
 jobs:
@@ -13,7 +12,23 @@ jobs:
         with:
           fetch-depth: 0
           lfs: true
-      - name: Push to hub
+
+      - name: Push Subdirectory to Hugging Face
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: git push --force https://Ianksyahputra:$HF_TOKEN@huggingface.co/spaces/Ianksyahputra/modelfacenetMTCNN main
+        run: |
+          # Masuk ke folder backend
+          cd backend
+          
+          # Inisialisasi git baru di dalam folder backend untuk isolasi deployment
+          git init
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          
+          # Tambahkan semua file di dalam backend ke 'git' lokal ini
+          git add .
+          git commit -m "Deploy backend to Hugging Face via GitHub Actions"
+          
+          # Push paksa ke Hugging Face
+          # CATATAN: Pastikan Anda sudah mengganti 'username/space-name' dengan data asli Anda di repository GitHub
+          git push --force https://ihram:$HF_TOKEN@huggingface.co/spaces/Ianksyahputra/modelfacenet main
