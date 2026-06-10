@@ -15,7 +15,15 @@ class RecognizeRequest(BaseModel):
     image: str # Base64 encoded image dari kamera kelas
     session_id: str
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+
+def _to_utc_aware(val):
+    if isinstance(val, str):
+        dt = datetime.fromisoformat(val.replace('Z', '+00:00'))
+        return dt.astimezone(timezone.utc)
+    if isinstance(val, datetime):
+        return val if val.tzinfo is not None else val.replace(tzinfo=timezone.utc)
+    return None
 
 @router.post("/recognize")
 async def recognize_student(request: RecognizeRequest, current_user: dict = Depends(get_current_user)):
@@ -31,13 +39,9 @@ async def recognize_student(request: RecognizeRequest, current_user: dict = Depe
     if session_row['status'] != 'active':
         raise HTTPException(status_code=400, detail="Sesi kelas tidak valid atau sudah ditutup")
 
-    start_time = session_row.get('start_time')
-    end_time = session_row.get('end_time')
-    now = datetime.utcnow()
-    if isinstance(start_time, str):
-        start_time = datetime.fromisoformat(start_time.replace('Z', '+00:00'))
-    if isinstance(end_time, str):
-        end_time = datetime.fromisoformat(end_time.replace('Z', '+00:00'))
+    start_time = _to_utc_aware(session_row.get('start_time'))
+    end_time = _to_utc_aware(session_row.get('end_time'))
+    now = datetime.now(timezone.utc)
     if not (start_time and end_time and start_time <= now <= end_time):
         raise HTTPException(status_code=400, detail="Sesi kelas saat ini tidak berada dalam rentang waktu yang valid")
 
