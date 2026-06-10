@@ -24,6 +24,8 @@ CREATE TABLE IF NOT EXISTS course_sessions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     course_id UUID REFERENCES courses(id) ON DELETE CASCADE,
     session_date DATE DEFAULT CURRENT_DATE,
+    start_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    end_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     status VARCHAR DEFAULT 'active', -- 'active' atau 'closed'
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
