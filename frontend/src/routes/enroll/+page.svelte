@@ -84,7 +84,7 @@
 
     if (frame) {
       try {
-        const response = await fetch(`${API_BASE_URL}/api/validate', {
+        const response = await fetch(`${API_BASE_URL}/api/validate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ image: frame, expected_pose: expectedPose })
@@ -129,7 +129,7 @@
   async function finishEnrollment() {
     feedbackMessage = "Memproses dan menyimpan data biometrik...";
     try {
-      const response = await fetch(`${API_BASE_URL}/api/enroll', {
+      const response = await fetch(`${API_BASE_URL}/api/enroll`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nim, name, frames: capturedFrames })
