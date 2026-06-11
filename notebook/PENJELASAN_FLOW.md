@@ -126,12 +126,35 @@ Mencari **threshold (τ) optimal** untuk keputusan "dikenali / tidak dikenali".
    - Hitung **Precision, Recall, F1-Score**
 3. Pilih τ dengan **F1-Score tertinggi**
 
-**Output**: Grafik Precision-Recall-F1 vs Threshold + distribusi genuine vs impostor.
+**Output**: Grafik Precision-Recall-F1 vs Threshold + distribusi genuine vs impostor + kurva FAR vs FRR dengan titik EER.
+
+#### D.2.b FAR / FRR / EER — Metrik Keamanan Biometrik
+
+Selain Precision-Recall-F1, sistem menghitung metrik keamanan biometrik standar:
+
+| Metrik | Definisi | Rumus |
+|--------|----------|-------|
+| **FAR** (False Acceptance Rate) | Proporsi impostor yang salah diterima sebagai subjek dikenal | FP / (FP + TN) |
+| **FRR** (False Rejection Rate) | Proporsi subjek dikenal yang salah ditolak | FN / (FN + TP) |
+| **EER** (Equal Error Rate) | Titik di mana FAR = FRR — semakin rendah semakin baik | min\|FAR − FRR\| |
+
+**Proses**:
+1. Dari distribusi genuine (sesama subjek) dan impostor (beda subjek), hitung FAR dan FRR untuk setiap threshold τ ∈ [0.3, 0.95]
+2. Cari **EER**: threshold di mana selisih FAR dan FRR minimal
+3. Plot kurva FAR vs FRR — semakin ke kiri bawah (FAR/FRR rendah), semakin baik
+
+**Interpretasi**:
+- **FAR tinggi** → sistem terlalu permisif (banyak orang asing diterima). Berbahaya untuk keamanan.
+- **FRR tinggi** → sistem terlalu ketat (subjek sah ditolak). Mengganggu pengalaman pengguna.
+- **EER rendah** → sistem seimbang antara keamanan dan kenyamanan. EER < 5% dianggap sangat baik.
 
 **Contoh output**:
 ```
 Optimal threshold: τ = 0.7586
 Best F1-Score: 1.0000
+FAR at τ=0.76: 0.0000 (0.00%)
+FRR at τ=0.76: 0.0000 (0.00%)
+Equal Error Rate (EER): 0.0321 (3.21%) at τ=0.6310
 ```
 
 #### D.3 Real-time Test (WebcamTester)
@@ -156,6 +179,8 @@ Best F1-Score: 1.0000
 - **Recall per subjek**: TP / (TP + FN)
 - **F1-Score per subjek**: 2 × (P × R) / (P + R)
 - **Macro Average**: rata-rata metrik seluruh kelas
+- **FAR** (False Acceptance Rate): proporsi impostor (\<unknown\> GT) yang salah diterima sebagai subjek dikenal
+- **FRR** (False Rejection Rate): proporsi subjek dikenal yang salah ditolak (predicted ≠ GT)
 
 #### D.4 Latency Benchmarking
 
@@ -213,7 +238,7 @@ Threshold τ adalah parameter yang **bisa di-tune** sesuai kebutuhan:
 | `pca_space.png` | PCA 2D — clustering per subjek & per pose |
 | `tsne_space.png` | t-SNE 2D — separasi embedding |
 | `similarity_dist.png` | Boxplot cosine similarity per pose |
-| `threshold_analysis.png` | Precision-Recall-F1 vs Threshold + histogram |
+| `threshold_analysis.png` | Precision-Recall-F1 vs Threshold + histogram + kurva FAR/FRR + EER |
 | `realtime_cm.png` | Confusion matrix real-time test |
 | `latency.png` | Distribusi latency pipeline |
 
