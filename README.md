@@ -104,3 +104,15 @@ Frontend ini merupakan *Thin Client* yang mengelola kamera (WebRTC) dan UI, lalu
 
 *   **Pemisahan Tugas:** Tidak ada proses komputasi AI (TensorFlow/ONNX) di sisi *browser* (Frontend). SvelteKit murni bertugas menangkap gambar 2D dan merender DOM. Semua beban komputasi AI diserahkan ke FastAPI (Backend).
 *   **Multi-Vector Concept:** Untuk mencegah efek penggabungan vektor yang "buram", setiap wajah (4 angle pose pendaftaran) disimpan secara terpisah di tabel `student_faces`. Saat *scan* kelas, RPC PostgreSQL akan menghitung skor kemiripan antara wajah di kamera dengan *semua* variasi wajah milik seluruh mahasiswa secara paralel di level *database*.
+
+---
+
+# 👥 Tim Pengembang
+
+* Muhammad Ihram Syahputra
+* Prasstyo Adhi Pangestu
+* Jeremy Revaldo Latuperisa
+* Siti Surti
+* Nabila Auliya Bitu
+
+---
